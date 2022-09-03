@@ -1,7 +1,7 @@
 from binance_f import RequestClient
 from binance_f.constant.test import *
 from client.ReqClient import ReqClient
-from client.model.Entry import *
+from client.model.CoinEntry import *
 
 
 class BnFutureReqClient(ReqClient):
