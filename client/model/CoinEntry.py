@@ -1,30 +1,20 @@
-import sys
-from peewee import CompositeKey, IntegerField, CharField
-import peewee
+from peewee import CompositeKey, IntegerField, CharField, Database, TextField, FixedCharField, DecimalField, DoubleField, FloatField, TimestampField
 
-from db.BaseModel import BaseModel
+from client.model.BaseModel import BaseModel
 
 
 class CoinEntry(BaseModel):
     class Meta:
-        db_table = "CoinEntry"
-        primary_key = CompositeKey('aaa', 'bbb')
+        db_table = 'coin_entry'
+        primary_key = CompositeKey('exchange', 'symbol')
 
-    aaa = IntegerField()
-    bbb = IntegerField()
-    ccc = CharField()
+    exchange = CharField()
+    symbol = CharField()
+    status = CharField()
+    base_asset = CharField()
+    quote_asset = CharField()
+    base_asset_precision = IntegerField()
+    quote_asset_precision = IntegerField()
+    onboard_date = TimestampField()
 
-
-class CoinEntry2(BaseModel):
-    class Meta:
-        db_table = "CoinEntry"
-        primary_key = CompositeKey('aaa', 'bbb')
-
-    aaa = IntegerField()
-    bbb = IntegerField()
-    ccc = CharField()
-
-
-aa = CoinEntry.create()
-
-ab = 0
+    deci = DecimalField()
