@@ -1,4 +1,4 @@
-from peewee import CompositeKey, IntegerField, CharField, TimestampField, BooleanField
+from peewee import CompositeKey, IntegerField, CharField, TimestampField, FixedCharField, BooleanField
 
 from client.model.BaseModel import BaseModel
 
@@ -15,5 +15,4 @@ class CoinEntry(BaseModel):
     base_asset_precision = IntegerField()
     quote_asset_precision = IntegerField()
     onboard_date = TimestampField()
-    is_listed = BooleanField()
 

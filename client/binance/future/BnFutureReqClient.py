@@ -2,7 +2,7 @@ import configparser
 
 from binance.um_futures import UMFutures
 from client.ReqClient import ReqClient
-from client.model.CoinEntry import *
+from client.model.CoinEntryBinance import CoinEntryBinance
 
 
 class BnFutureReqClient(ReqClient):
@@ -18,8 +18,7 @@ class BnFutureReqClient(ReqClient):
     def get_entry(self):
         coin_entry_list = list()
         for e in self.um_futures_client.exchange_info()['symbols']:
-            c = CoinEntry()
-            # c.exchange = 'BINANCE'
+            c = CoinEntryBinance()
             c.symbol = e['symbol']
             c.status = e['status']
             c.base_asset = e['baseAsset']
@@ -27,16 +26,6 @@ class BnFutureReqClient(ReqClient):
             c.base_asset_precision = e['baseAssetPrecision']
             c.quote_asset_precision = e['pricePrecision']
             c.onboard_date = e['onboardDate']
-            # c = CoinEntry.create(
-            #     exchange='BINANCE',
-            #     symbol=e['symbol'],
-            #     status=e['status'],
-            #     base_asset=e['baseAsset'],
-            #     quote_asset=e['quoteAsset'],
-            #     base_asset_precision=e['baseAssetPrecision'],
-            #     quote_asset_precision=e['pricePrecision'],
-            #     onboard_date=e['onboardDate']
-            # )
             coin_entry_list.append(c)
         return coin_entry_list
 
