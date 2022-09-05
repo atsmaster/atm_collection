@@ -4,9 +4,9 @@ from abc import *
 class ReqClient(metaclass=ABCMeta):
 
     @abstractmethod
-    def get_coin_info(self):
+    def get_entry(self):
         pass
 
     @abstractmethod
-    def get_coin_candle(self):
+    def get_candle(self):
         pass
