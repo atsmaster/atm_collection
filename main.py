@@ -1,12 +1,13 @@
+from client.model.CoinCandleBinance import CoinCandleBinance
 from client.model.CoinEntryStatus import CoinEntryStatus
-from client.model.CoinEntryBinance import CoinEntryBinance
+from client.model.CoinEntry import CoinEntry
 from db.Database import Database
 import sys
 
 
 def create_table():
     database = Database().conn()
-    database.create_tables([CoinEntryBinance, CoinEntryStatus])
+    database.create_tables([CoinEntry, CoinEntryStatus, CoinCandleBinance])
     aa=0
 
 

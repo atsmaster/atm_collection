@@ -3,3 +3,5 @@ pip install peewee
 
 pip install binance-futures-connector
 https://github.com/binance/binance-futures-connector-python
+
+
