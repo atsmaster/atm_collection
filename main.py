@@ -1,3 +1,5 @@
+import logging
+
 from client.model.CoinCandleBinance import CoinCandleBinance
 from client.model.CoinEntryStatus import CoinEntryStatus
 from client.model.CoinEntry import CoinEntry
@@ -17,5 +19,6 @@ def main(argv):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     main(sys.argv)
 

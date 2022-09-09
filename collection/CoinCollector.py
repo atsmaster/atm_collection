@@ -1,9 +1,15 @@
+import datetime
+import logging
+
 from peewee import fn
 
 from client.ReqClientFactory import ReqClientFactory
 from client.model.CoinCandleFactory import CoinCandleFactory
 from client.model.CoinEntry import CoinEntry
 from client.model.CoinEntryStatus import CoinEntryStatus
+
+logger = logging.getLogger()
+logging.basicConfig(format='%(levelname)s:[%(asctime)s] %(message)s', level=logging.DEBUG)
 
 
 class CoinCollector:
@@ -13,6 +19,7 @@ class CoinCollector:
         __init__:
             거래소(exchange)를 파라미터로 받아 해당 거래소의 정보를 처리합니다.
     """
+
     def __init__(self, exchange):
         self.exchange = exchange
         self.req_client = ReqClientFactory.create_req(exchange)
@@ -20,20 +27,56 @@ class CoinCollector:
         self.coin_entry = CoinEntry
         self.coin_entry_status = CoinEntryStatus
 
-    def collect_candle(self):
-        sub = self.coin_entry_status\
-            .select(self.coin_entry_status.symbol)\
+    def collect_candle_n(self):
+        sub = self.coin_entry_status \
+            .select(self.coin_entry_status.symbol) \
+            .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'N')
+
+        entry_list_onboard = list(self.coin_entry
+                                  .select(self.coin_entry.symbol, self.coin_entry.onboard_date)
+                                  .where(self.coin_entry.symbol.in_(sub)))
+
+        entry_list_maxopentime = list(self.coin_candle
+                                      .select(self.coin_candle.symbol, self.coin_candle.time_interval, fn.Max(self.coin_candle.open_time))
+                                      .where(self.coin_candle.symbol.in_(sub))
+                                      .group_by(self.coin_candle.symbol, self.coin_candle.time_interval))
+
+        now_date = datetime.datetime.now()
+        import time
+        start = time.time()  # 시작 시간 저장
+        for entry in entry_list_onboard:
+            base_date = entry.onboard_date
+
+            start_date = base_date
+            end_date = base_date + datetime.timedelta(minutes=1500)
+            while True:
+                if end_date >= now_date:
+                    end_date = now_date
+                    candle = self.req_client.get_candle(entry.symbol, '1m', start_date, end_date, 1500)
+                    self.coin_candle.bulk_create(candle)
+                    break
+
+                candle = self.req_client.get_candle(entry.symbol, '1m', start_date, end_date, 1500)
+                # self.coin_candle.bulk_create(candle)
+                logger.info("%s / %s ~ %s", entry.symbol, start_date, end_date)
+                # print("[%s] %s ~ %s", entry.symbol, start_date, end_date)
+
+                start_date = end_date + datetime.timedelta(minutes=1)
+                end_date = start_date + datetime.timedelta(minutes=1500)
+
+    def collect_candle_l(self):
+        sub = self.coin_entry_status \
+            .select(self.coin_entry_status.symbol) \
             .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'L')
 
-        entry_list = self.coin_candle\
-            .select(self.coin_candle.symbol, fn.Max(self.coin_candle.open_time))\
-            .where(self.coin_candle.symbol.in_(sub))\
+        entry_list = self.coin_candle \
+            .select(self.coin_candle.symbol, fn.Max(self.coin_candle.open_time)) \
+            .where(self.coin_candle.symbol.in_(sub)) \
             .group_by(self.coin_candle.symbol)
 
-        for entry in self.coin_entry.select().where(self.coin_entry.symbol == '1000LUNCBUSD'):
+        # 현재 상장중(L)인 종목에 대해서만 가격요청, 가장 최근에 저장된 Time 부터
+        for entry in entry_list:
             self.req_client.get_candle(['1000LUNCBUSD'], '1m', entry.onboard_date, entry.onboard_date)
-
-
 
         # for entry in entry_list:
         #     print(entry)
@@ -62,9 +105,9 @@ class CoinCollector:
         for db_entry in db_entry_s:
             db_entry_dict[db_entry.symbol] = db_entry
 
-        existing_entry_symbol = req_entry_dict.keys() & db_entry_dict.keys()   # 기존 종목
-        new_entry_symbol = req_entry_dict.keys() - db_entry_dict.keys()        # 상장 신규 종목
-        del_entry_symbol = db_entry_dict.keys() - req_entry_dict.keys()        # 상장 폐지 종목
+        existing_entry_symbol = req_entry_dict.keys() & db_entry_dict.keys()  # 기존 종목
+        new_entry_symbol = req_entry_dict.keys() - db_entry_dict.keys()  # 상장 신규 종목
+        del_entry_symbol = db_entry_dict.keys() - req_entry_dict.keys()  # 상장 폐지 종목
 
         update_coin_entry = list()
         insert_coin_entry = list()
@@ -109,5 +152,6 @@ class CoinCollector:
 
 
 aa = CoinCollector('BINANCE')
-# aa.collect_entry()
-aa.collect_candle()
+aa.collect_entry()
+# aa.collect_candle_n()
+# aa.collect_candle_l()

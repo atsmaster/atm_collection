@@ -1,14 +1,17 @@
 import configparser
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
 
 from binance.um_futures import UMFutures
 from client.ReqClient import ReqClient
+from client.model.CoinCandleBinance import CoinCandleBinance
 from client.model.CoinEntry import CoinEntry
 
 
 class BnFutureReqClient(ReqClient):
 
     EXCHANGE_NAME = 'BINANCE'
+    LIMIT = 2400  # 분당 요청할 수 있는 개수
+
     def __init__(self):
         properties = configparser.ConfigParser()
         properties.read('C:/atm_collection_master/config.ini')
@@ -32,16 +35,26 @@ class BnFutureReqClient(ReqClient):
             coin_entry_list.append(c)
         return coin_entry_list
 
-    def get_candle(self, symbol_list, interval, start_time, end_time):
-        print(start_time)
-        print(start_time.replace(tzinfo=timezone.utc))
-        print(start_time.timestamp())
-        print(start_time.replace(tzinfo=timezone.utc).timestamp())
+    def get_candle(self, symbol, interval, start_time, end_time, limit):
+        # print(start_time)
+        # print(start_time.replace(tzinfo=timezone.utc))
+        # print(start_time.timestamp())
+        # print(start_time.replace(tzinfo=timezone.utc).timestamp())
 
+        start_time = int(start_time.timestamp() * 1000)
+        end_time = int(end_time.timestamp() * 1000)
 
-        # start_time = int(start_time.replace(tzinfo=timezone.utc).timestamp())
-        # end_time = int(end_time.replace(tzinfo=timezone.utc).timestamp())
+        candle_list = list()
+        for e in self.um_futures_client.klines(
+                symbol=symbol, interval=interval, startTime=start_time, endTime=end_time, limit=limit):
+            c = CoinCandleBinance()
+            c.symbol = symbol
+            c.time_interval = interval
+            c.open_time = datetime.fromtimestamp(int(e[0] / 1000))
+            c.open = e[1]
+            c.close = e[4]
+            c.high = e[2]
+            c.low = e[3]
+            candle_list.append(c)
 
-        for symbol in symbol_list:
-            aa = self.um_futures_client.klines(symbol=symbol, interval=interval, startTime=start_time, endTime=end_time)
-            print('aab')
+        return candle_list
