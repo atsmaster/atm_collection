@@ -1,7 +1,9 @@
 import datetime
 import logging
-
-from peewee import fn
+import os
+import sys
+import time
+import peewee
 
 from client.ReqClientFactory import ReqClientFactory
 from client.model.CoinCandleFactory import CoinCandleFactory
@@ -9,7 +11,6 @@ from client.model.CoinEntry import CoinEntry
 from client.model.CoinEntryStatus import CoinEntryStatus
 
 logger = logging.getLogger()
-logging.basicConfig(format='%(levelname)s:[%(asctime)s] %(message)s', level=logging.DEBUG)
 
 
 class CoinCollector:
@@ -28,24 +29,28 @@ class CoinCollector:
         self.coin_entry_status = CoinEntryStatus
 
     def collect_candle_n(self):
-        sub = self.coin_entry_status \
-            .select(self.coin_entry_status.symbol) \
-            .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'N')
+        sub = (self.coin_entry_status
+                    .select(self.coin_entry_status.symbol)
+                    .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'N'))
 
         entry_list_onboard = list(self.coin_entry
                                   .select(self.coin_entry.symbol, self.coin_entry.onboard_date)
                                   .where(self.coin_entry.symbol.in_(sub)))
 
         entry_list_maxopentime = list(self.coin_candle
-                                      .select(self.coin_candle.symbol, self.coin_candle.time_interval, fn.Max(self.coin_candle.open_time))
+                                      .select(self.coin_candle.symbol, self.coin_candle.time_interval, peewee.fn.Max(self.coin_candle.open_time))
                                       .where(self.coin_candle.symbol.in_(sub))
                                       .group_by(self.coin_candle.symbol, self.coin_candle.time_interval))
 
+        entry_list_maxopentime = {x.symbol: x.open_time for x in entry_list_maxopentime}
+
         now_date = datetime.datetime.now()
-        import time
+
         start = time.time()  # 시작 시간 저장
         for entry in entry_list_onboard:
             base_date = entry.onboard_date
+            if entry.symbol in entry_list_maxopentime:  # 기존에 캔들 데이터가 존재한다면 가장 최근 open time 부터 수집
+                base_date = entry_list_maxopentime[entry.symbol] + datetime.timedelta(minutes=1)
 
             start_date = base_date
             end_date = base_date + datetime.timedelta(minutes=1500)
@@ -54,15 +59,17 @@ class CoinCollector:
                     end_date = now_date
                     candle = self.req_client.get_candle(entry.symbol, '1m', start_date, end_date, 1500)
                     self.coin_candle.bulk_create(candle)
+                    logger.info("%s / %s ~ %s", entry.symbol, start_date, end_date)
                     break
 
                 candle = self.req_client.get_candle(entry.symbol, '1m', start_date, end_date, 1500)
-                # self.coin_candle.bulk_create(candle)
+                self.coin_candle.bulk_create(candle)
                 logger.info("%s / %s ~ %s", entry.symbol, start_date, end_date)
                 # print("[%s] %s ~ %s", entry.symbol, start_date, end_date)
 
                 start_date = end_date + datetime.timedelta(minutes=1)
                 end_date = start_date + datetime.timedelta(minutes=1500)
+                time.sleep(0.5)
 
     def collect_candle_l(self):
         sub = self.coin_entry_status \
@@ -70,7 +77,7 @@ class CoinCollector:
             .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'L')
 
         entry_list = self.coin_candle \
-            .select(self.coin_candle.symbol, fn.Max(self.coin_candle.open_time)) \
+            .select(self.coin_candle.symbol, peewee.fn.Max(self.coin_candle.open_time)) \
             .where(self.coin_candle.symbol.in_(sub)) \
             .group_by(self.coin_candle.symbol)
 
@@ -151,7 +158,7 @@ class CoinCollector:
                 e.save()
 
 
-aa = CoinCollector('BINANCE')
-aa.collect_entry()
+# aa = CoinCollector('BINANCE')
+# # aa.collect_entry()
 # aa.collect_candle_n()
-# aa.collect_candle_l()
+# # aa.collect_candle_l()
