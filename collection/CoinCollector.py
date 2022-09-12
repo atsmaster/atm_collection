@@ -28,7 +28,43 @@ class CoinCollector:
         self.coin_entry = CoinEntry
         self.coin_entry_status = CoinEntryStatus
 
+    def check_missing_candle(self):
+        """ check_missing_candle:
+                신규 상장 종목 대상으로 결측치(missing value)가 있는지 확인
+
+            Args:
+                self :
+
+            Returns:
+                void :
+        """
+
+        sub = (self.coin_entry_status
+                    .select(self.coin_entry_status.symbol)
+                    .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'N'))
+
+        entry_list_maxopentime = list(self.coin_candle
+                                      .select(self.coin_candle.symbol
+                                              , peewee.fn.Max(self.coin_candle.open_time)
+                                              , peewee.fn.Mix(self.coin_candle.open_time)
+                                              , peewee.fn.Count(self.coin_candle.open_time))
+                                      .where(self.coin_candle.symbol.in_(sub))
+                                      .group_by(self.coin_candle.symbol, self.coin_candle.time_interval))
+        aa = 0
+
+
     def collect_candle_n(self):
+        """ collect_candle_n:
+                거래소에 요청하여 신규 상장(N)한 종목의 캔들을 저장한다.
+                1. 상장일부터 수집
+                2. 신규지만 DB에 저장되어 있다면(수집중 종료하게되면 이런 경우가 있음), 가장최근 open_time 부터 수집
+
+            Args:
+                self :
+
+            Returns:
+                void :
+        """
         sub = (self.coin_entry_status
                     .select(self.coin_entry_status.symbol)
                     .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'N'))
@@ -72,6 +108,16 @@ class CoinCollector:
                 time.sleep(0.5)
 
     def collect_candle_l(self):
+        """ collect_candle_l:
+                거래소에 요청하여 기존 상장중(L)인 종목의 캔들을 저장한다.
+                1. DB에 저장되어 캔들 중 종목마다 가장 최근 open_time을 기준으로 캔들 저장
+
+            Args:
+                self :
+
+            Returns:
+                void :
+        """
         sub = self.coin_entry_status \
             .select(self.coin_entry_status.symbol) \
             .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'L')
@@ -91,7 +137,7 @@ class CoinCollector:
 
     def collect_entry(self):
         """ update_entry:
-                거래소API를 요청하여 신규 상장, 상장 폐지, 기존 상장 종목 들을 insert, update 한다.
+                거래소에 요청하여 신규 상장, 상장 폐지, 기존 상장 종목 들을 insert, update 한다.
 
             Args:
                 self :

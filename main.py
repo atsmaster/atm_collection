@@ -21,6 +21,7 @@ def main(argv):
 
 
 if __name__ == '__main__':
+    print("START")
     logger = logging.getLogger()
     logging.basicConfig(filename='C:/atm_collection_master/atm_collection/log.txt'
                         , format='%(levelname)s:[%(asctime)s] %(message)s'
