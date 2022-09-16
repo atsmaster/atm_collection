@@ -1,7 +1,12 @@
 pip install pymysql
 pip install peewee
 
+pip install pyinstaller
+
 pip install binance-futures-connector
 https://github.com/binance/binance-futures-connector-python
 
-
+pip install certifi
+환경변수(사용자 변수 편집)
+변수이름 : SSL_SERT_FILE
+변수값   : [python -m certifi]값

@@ -17,7 +17,7 @@ def create_table():
 def main(argv):
     create_table()
     aa = CoinCollector.CoinCollector('BINANCE')
-    aa.collect_candle_n()
+    aa.collect_candle_l()
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import logging
 import os
 import sys
@@ -6,6 +6,7 @@ import time
 import peewee
 
 from client.ReqClientFactory import ReqClientFactory
+from client.binance.future.BnFutureWssClient import BnFutureWssClient
 from client.model.CoinCandleFactory import CoinCandleFactory
 from client.model.CoinEntry import CoinEntry
 from client.model.CoinEntryStatus import CoinEntryStatus
@@ -24,6 +25,7 @@ class CoinCollector:
     def __init__(self, exchange):
         self.exchange = exchange
         self.req_client = ReqClientFactory.create_req(exchange)
+        self.wss_client = BnFutureWssClient()
         self.coin_candle = CoinCandleFactory.create_entry(exchange)
         self.coin_entry = CoinEntry
         self.coin_entry_status = CoinEntryStatus
@@ -45,13 +47,11 @@ class CoinCollector:
 
         entry_list_maxopentime = list(self.coin_candle
                                       .select(self.coin_candle.symbol
-                                              , peewee.fn.Max(self.coin_candle.open_time)
-                                              , peewee.fn.Mix(self.coin_candle.open_time)
-                                              , peewee.fn.Count(self.coin_candle.open_time))
+                                              , peewee.fn.Max(self.coin_candle.open_time).alias('max_open_time')
+                                              , peewee.fn.Min(self.coin_candle.open_time).alias('min_open_time')
+                                              , peewee.fn.Count(self.coin_candle.open_time)).alias('cnt_open_time')
                                       .where(self.coin_candle.symbol.in_(sub))
                                       .group_by(self.coin_candle.symbol, self.coin_candle.time_interval))
-        aa = 0
-
 
     def collect_candle_n(self):
         """ collect_candle_n:
@@ -80,16 +80,16 @@ class CoinCollector:
 
         entry_list_maxopentime = {x.symbol: x.open_time for x in entry_list_maxopentime}
 
-        now_date = datetime.datetime.now()
+        now_date = dt.now()
 
         start = time.time()  # 시작 시간 저장
         for entry in entry_list_onboard:
             base_date = entry.onboard_date
             if entry.symbol in entry_list_maxopentime:  # 기존에 캔들 데이터가 존재한다면 가장 최근 open time 부터 수집
-                base_date = entry_list_maxopentime[entry.symbol] + datetime.timedelta(minutes=1)
+                base_date = entry_list_maxopentime[entry.symbol] + dt.timedelta(minutes=1)
 
             start_date = base_date
-            end_date = base_date + datetime.timedelta(minutes=1500)
+            end_date = base_date + dt.timedelta(minutes=1500)
             while True:
                 if end_date >= now_date:
                     end_date = now_date
@@ -103,8 +103,8 @@ class CoinCollector:
                 logger.info("%s / %s ~ %s", entry.symbol, start_date, end_date)
                 # print("[%s] %s ~ %s", entry.symbol, start_date, end_date)
 
-                start_date = end_date + datetime.timedelta(minutes=1)
-                end_date = start_date + datetime.timedelta(minutes=1500)
+                start_date = end_date + dt.timedelta(minutes=1)
+                end_date = start_date + dt.timedelta(minutes=1500)
                 time.sleep(0.5)
 
     def collect_candle_l(self):
@@ -118,18 +118,36 @@ class CoinCollector:
             Returns:
                 void :
         """
+
         sub = self.coin_entry_status \
             .select(self.coin_entry_status.symbol) \
             .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'L')
 
-        entry_list = self.coin_candle \
-            .select(self.coin_candle.symbol, peewee.fn.Max(self.coin_candle.open_time)) \
-            .where(self.coin_candle.symbol.in_(sub)) \
-            .group_by(self.coin_candle.symbol)
 
-        # 현재 상장중(L)인 종목에 대해서만 가격요청, 가장 최근에 저장된 Time 부터
-        for entry in entry_list:
-            self.req_client.get_candle(['1000LUNCBUSD'], '1m', entry.onboard_date, entry.onboard_date)
+        now = dt.datetime.now()
+        temp_date = dt.datetime(now.year, now.month, now.day, now.hour, now.minute)
+
+        while(True):
+            entry_list = list(self.coin_candle
+                              .select(self.coin_candle.symbol
+                                      , peewee.fn.Max(self.coin_candle.open_time).alias('max_open_time'))
+                              .where(self.coin_candle.symbol.in_(sub))
+                              .group_by(self.coin_candle.symbol))
+
+            for e in entry_list:
+                if e['max_open_time'] < temp_date:
+                    candle = self.req_client.get_candle(e['symbol'], '1m', e['max_open_time'], temp_date, 1500)
+                    self.coin_candle.bulk_create(candle)
+
+            now = dt.datetime.now()
+            temp_date = dt.datetime(now.year, now.month, now.day, now.hour, now.minute)
+
+
+
+
+        # # 현재 상장중(L)인 종목에 대해서만 가격요청, 가장 최근에 저장된 Time 부터
+        # for entry in entry_list:
+        #     self.req_client.get_candle(['1000LUNCBUSD'], '1m', entry.onboard_date, entry.onboard_date)
 
         # for entry in entry_list:
         #     print(entry)
