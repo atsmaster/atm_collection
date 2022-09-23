@@ -1,5 +1,7 @@
 import configparser
-from peewee import Model
+import datetime
+
+from peewee import Model, DateTimeField
 
 from db.Database import Database
 
@@ -8,3 +10,4 @@ class BaseModel(Model):
 
     class Meta:
         database = Database().conn()
+

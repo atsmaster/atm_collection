@@ -1,7 +1,7 @@
 import logging
 
 from client.model.CoinCandleBinance import CoinCandleBinance
-from client.model.CoinEntryStatus import CoinEntryStatus
+from client.model.CoinEntryHist import CoinEntryHist
 from client.model.CoinEntry import CoinEntry
 from collection import CoinCollector
 from db.Database import Database
@@ -10,14 +10,14 @@ import sys
 
 def create_table():
     database = Database().conn()
-    database.create_tables([CoinEntry, CoinEntryStatus, CoinCandleBinance])
+    database.create_tables([CoinEntry, CoinEntryHist, CoinCandleBinance])
     aa = 0
 
 
 def main(argv):
     create_table()
     aa = CoinCollector.CoinCollector('BINANCE')
-    aa.collect_candle_l()
+    aa.collect_entry()
 
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ from client.ReqClientFactory import ReqClientFactory
 from client.binance.future.BnFutureWssClient import BnFutureWssClient
 from client.model.CoinCandleFactory import CoinCandleFactory
 from client.model.CoinEntry import CoinEntry
-from client.model.CoinEntryStatus import CoinEntryStatus
+from client.model.CoinEntryHist import CoinEntryHist
 
 logger = logging.getLogger()
 
@@ -28,7 +28,7 @@ class CoinCollector:
         self.wss_client = BnFutureWssClient()
         self.coin_candle = CoinCandleFactory.create_entry(exchange)
         self.coin_entry = CoinEntry
-        self.coin_entry_status = CoinEntryStatus
+        self.coin_entry_hist = CoinEntryHist
 
     def check_missing_candle(self):
         """ check_missing_candle:
@@ -165,8 +165,12 @@ class CoinCollector:
         """
         req_entry_s = self.req_client.get_entry()
         db_entry_s = self.coin_entry.select()
+        db_entry_hist_s = (self.coin_entry_hist.select()
+                .group_by(self.coin_entry_hist.exchange, self.coin_entry_hist.symbol))
+
         req_entry_dict = dict()
         db_entry_dict = dict()
+        db_entry_hist_set = set()
 
         # 요청(거래소 API)된 종목 정보
         for req_entry in req_entry_s:
@@ -176,50 +180,105 @@ class CoinCollector:
         for db_entry in db_entry_s:
             db_entry_dict[db_entry.symbol] = db_entry
 
+        # DB에 조회된 종목 hist 종목명
+        for db_entry_hist in db_entry_hist_s:
+            db_entry_hist_set.add(db_entry_hist)
+
         existing_entry_symbol = req_entry_dict.keys() & db_entry_dict.keys()  # 기존 종목
-        new_entry_symbol = req_entry_dict.keys() - db_entry_dict.keys()  # 상장 신규 종목
+        new_entry_symbol = req_entry_dict.keys() - db_entry_dict.keys()  # 상장 신규 종목 (+ 재상장)
         del_entry_symbol = db_entry_dict.keys() - req_entry_dict.keys()  # 상장 폐지 종목
 
-        update_coin_entry = list()
         insert_coin_entry = list()
-        update_coin_entry_status = list()
-        insert_coin_entry_status = list()
-        # 기존 종목, 상장 신규 종목, 상장 폐지 종목 처리
-        for symbol, entry in req_entry_dict.items():
-            if symbol in existing_entry_symbol and entry.__ne__(db_entry_dict[symbol]):
-                update_coin_entry.append(entry)
-
-            if symbol in new_entry_symbol:
-                insert_coin_entry.append(entry)
+        update_coin_entry = list()
+        delete_coin_entry = list()
+        insert_coin_entry_hist = list()
 
         for symbol in new_entry_symbol:
-            status = CoinEntryStatus()
-            status.exchange = self.exchange
-            status.symbol = symbol
-            status.list_cd = 'N'
-            status.price_use_yn = False
-            insert_coin_entry_status.append(status)
+            if symbol in db_entry_hist_set:
+                hist = self.create_coin_entry_hist(req_entry_dict[symbol], 'R', 'Y')
+                insert_coin_entry_hist.append(hist)
+            else:
+                hist = self.create_coin_entry_hist(req_entry_dict[symbol], 'N', 'Y')
+                insert_coin_entry_hist.append(hist)
+
+            insert_coin_entry.append(req_entry_dict[symbol])
+
+        for symbol in existing_entry_symbol:
+            if req_entry_dict[symbol].__ne__(db_entry_dict[symbol]):
+                hist = self.create_coin_entry_hist(req_entry_dict[symbol], 'L', 'Y')
+                insert_coin_entry_hist.append(hist)
+                update_coin_entry.append(req_entry_dict[symbol])
 
         for symbol in del_entry_symbol:
-            status = CoinEntryStatus()
-            status.exchange = self.exchange
-            status.symbol = symbol
-            status.list_cd = 'D'
-            status.price_use_yn = False
-            update_coin_entry_status.append(status)
+            hist = self.create_coin_entry_hist(db_entry_dict[symbol], 'D', 'Y')
+            insert_coin_entry_hist.append(hist)
+            delete_coin_entry.append(db_entry_dict[symbol])
 
-        # 정보 저장
         if len(insert_coin_entry) > 0:
             self.coin_entry.bulk_create(insert_coin_entry)
-        if len(insert_coin_entry_status) > 0:
-            self.coin_entry_status.bulk_create(insert_coin_entry_status)
 
-        if len(update_coin_entry) > 0:
-            for e in update_coin_entry:
-                e.save()
-        if len(update_coin_entry_status) > 0:
-            for e in update_coin_entry_status:
-                e.save()
+        if len(insert_coin_entry_hist) > 0:
+            self.coin_entry_hist.bulk_create(insert_coin_entry_hist)
+
+        for e in update_coin_entry:
+            e.save()
+
+        for e in delete_coin_entry:
+            e.delete()
+
+    def create_coin_entry_hist(self, entry, list_cd, price_yn):
+        hist = CoinEntryHist()
+        hist.exchange = self.exchange
+        # hist.create_date
+        hist.symbol = entry.symbol
+        hist.status = entry.status
+        hist.base_asset = entry.base_asset
+        hist.quote_asset = entry.quote_asset
+        hist.base_asset_precision = entry.base_asset_precision
+        hist.quote_asset_precision = entry.quote_asset_precision
+        hist.onboard_date = entry.onboard_date
+        hist.list_cd = list_cd
+        hist.price_use_yn = price_yn
+        return hist
+
+
+
+        # # 기존 종목, 상장 신규 종목, 상장 폐지 종목 처리
+        # for symbol, entry in req_entry_dict.items():
+        #     if symbol in existing_entry_symbol and entry.__ne__(db_entry_dict[symbol]):
+        #         update_coin_entry.append(entry)
+        #
+        #     if symbol in new_entry_symbol:
+        #         insert_coin_entry.append(entry)
+        #
+        # for symbol in new_entry_symbol:
+        #     status = CoinEntryHist()
+        #     status.exchange = self.exchange
+        #     status.symbol = symbol
+        #     status.list_cd = 'N'
+        #     status.price_use_yn = False
+        #     insert_coin_entry_status.append(status)
+        #
+        # for symbol in del_entry_symbol:
+        #     status = CoinEntryHist()
+        #     status.exchange = self.exchange
+        #     status.symbol = symbol
+        #     status.list_cd = 'D'
+        #     status.price_use_yn = False
+        #     update_coin_entry_status.append(status)
+        #
+        # # 정보 저장
+        # if len(insert_coin_entry) > 0:
+        #     self.coin_entry.bulk_create(insert_coin_entry)
+        # if len(insert_coin_entry_status) > 0:
+        #     self.coin_entry_status.bulk_create(insert_coin_entry_status)
+        #
+        # if len(update_coin_entry) > 0:
+        #     for e in update_coin_entry:
+        #         e.save()
+        # if len(update_coin_entry_status) > 0:
+        #     for e in update_coin_entry_status:
+        #         e.save()
 
 
 # aa = CoinCollector('BINANCE')
