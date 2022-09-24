@@ -119,25 +119,42 @@ class CoinCollector:
                 void :
         """
 
-        sub = self.coin_entry_status \
-            .select(self.coin_entry_status.symbol) \
-            .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'L')
-
+        # 수집 가능한 종목명
+        entry = self.coin_entry.select(self.coin_entry.symbol).where(self.coin_entry.exchange == self.exchange)
+        symbol_set = {e.symbol for e in entry}
 
         now = dt.datetime.now()
         temp_date = dt.datetime(now.year, now.month, now.day, now.hour, now.minute)
 
-        while(True):
+        while True:
             entry_list = list(self.coin_candle
                               .select(self.coin_candle.symbol
                                       , peewee.fn.Max(self.coin_candle.open_time).alias('max_open_time'))
-                              .where(self.coin_candle.symbol.in_(sub))
-                              .group_by(self.coin_candle.symbol))
+                              .group_by(self.coin_candle.symbol, self.coin_candle.time_interval))
 
-            for e in entry_list:
-                if e['max_open_time'] < temp_date:
-                    candle = self.req_client.get_candle(e['symbol'], '1m', e['max_open_time'], temp_date, 1500)
+            for e in entry_list:  # temp_date 기준으로 캔들 삽입
+                if e in symbol_set:  # 수집 가능한 종목 체크
+                    continue
+
+                start_date = e.max_open_time
+                end_date = start_date + dt.timedelta(minutes=1500)
+                req_date_list = []
+                while True:
+                    if end_date > temp_date:
+                        end_date = temp_date
+                        req_date_list.append([start_date, end_date])
+                        break
+
+                    req_date_list.append([start_date, end_date])
+                    start_date = start_date + dt.timedelta(minutes=1501)
+                    end_date = end_date + dt.timedelta(minutes=1501)
+
+                for d in req_date_list:
+                    candle = self.req_client.get_candle(e.symbol, '1m', d[0], d[1], 1500)
                     self.coin_candle.bulk_create(candle)
+                    time.sleep(0.5)
+
+
 
             now = dt.datetime.now()
             temp_date = dt.datetime(now.year, now.month, now.day, now.hour, now.minute)
@@ -176,13 +193,15 @@ class CoinCollector:
         for req_entry in req_entry_s:
             req_entry_dict[req_entry.symbol] = req_entry
 
+        req_entry_dict.pop('1000LUNCBUSD')
+
         # DB에 조회된 종목 정보
         for db_entry in db_entry_s:
             db_entry_dict[db_entry.symbol] = db_entry
 
         # DB에 조회된 종목 hist 종목명
         for db_entry_hist in db_entry_hist_s:
-            db_entry_hist_set.add(db_entry_hist)
+            db_entry_hist_set.add(db_entry_hist.symbol)
 
         existing_entry_symbol = req_entry_dict.keys() & db_entry_dict.keys()  # 기존 종목
         new_entry_symbol = req_entry_dict.keys() - db_entry_dict.keys()  # 상장 신규 종목 (+ 재상장)
@@ -224,12 +243,11 @@ class CoinCollector:
             e.save()
 
         for e in delete_coin_entry:
-            e.delete()
+            e.delete_instance()
 
     def create_coin_entry_hist(self, entry, list_cd, price_yn):
         hist = CoinEntryHist()
         hist.exchange = self.exchange
-        # hist.create_date
         hist.symbol = entry.symbol
         hist.status = entry.status
         hist.base_asset = entry.base_asset

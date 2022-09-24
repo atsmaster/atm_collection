@@ -11,13 +11,12 @@ import sys
 def create_table():
     database = Database().conn()
     database.create_tables([CoinEntry, CoinEntryHist, CoinCandleBinance])
-    aa = 0
 
 
 def main(argv):
     create_table()
     aa = CoinCollector.CoinCollector('BINANCE')
-    aa.collect_entry()
+    aa.collect_candle_l()
 
 
 if __name__ == '__main__':
