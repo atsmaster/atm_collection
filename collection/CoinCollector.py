@@ -10,6 +10,7 @@ from client.binance.future.BnFutureWssClient import BnFutureWssClient
 from client.model.CoinCandleFactory import CoinCandleFactory
 from client.model.CoinEntry import CoinEntry
 from client.model.CoinEntryHist import CoinEntryHist
+from com.ComDate import ComDate
 
 logger = logging.getLogger()
 
@@ -40,135 +41,106 @@ class CoinCollector:
             Returns:
                 void :
         """
+        entry = list(self.coin_entry
+                     .select(self.coin_entry.symbol, self.coin_entry.onboard_date)
+                     .where(self.coin_entry.exchange == self.exchange))
 
-        sub = (self.coin_entry_status
-                    .select(self.coin_entry_status.symbol)
-                    .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'N'))
-
-        entry_list_maxopentime = list(self.coin_candle
-                                      .select(self.coin_candle.symbol
-                                              , peewee.fn.Max(self.coin_candle.open_time).alias('max_open_time')
-                                              , peewee.fn.Min(self.coin_candle.open_time).alias('min_open_time')
-                                              , peewee.fn.Count(self.coin_candle.open_time)).alias('cnt_open_time')
-                                      .where(self.coin_candle.symbol.in_(sub))
-                                      .group_by(self.coin_candle.symbol, self.coin_candle.time_interval))
-
-    def collect_candle_n(self):
-        """ collect_candle_n:
-                거래소에 요청하여 신규 상장(N)한 종목의 캔들을 저장한다.
-                1. 상장일부터 수집
-                2. 신규지만 DB에 저장되어 있다면(수집중 종료하게되면 이런 경우가 있음), 가장최근 open_time 부터 수집
-
-            Args:
-                self :
-
-            Returns:
-                void :
-        """
-        sub = (self.coin_entry_status
-                    .select(self.coin_entry_status.symbol)
-                    .where(self.coin_entry_status.exchange == self.exchange, self.coin_entry_status.list_cd == 'N'))
-
-        entry_list_onboard = list(self.coin_entry
-                                  .select(self.coin_entry.symbol, self.coin_entry.onboard_date)
-                                  .where(self.coin_entry.symbol.in_(sub)))
-
-        entry_list_maxopentime = list(self.coin_candle
-                                      .select(self.coin_candle.symbol, self.coin_candle.time_interval, peewee.fn.Max(self.coin_candle.open_time))
-                                      .where(self.coin_candle.symbol.in_(sub))
-                                      .group_by(self.coin_candle.symbol, self.coin_candle.time_interval))
-
-        entry_list_maxopentime = {x.symbol: x.open_time for x in entry_list_maxopentime}
-
-        now_date = dt.now()
-
-        start = time.time()  # 시작 시간 저장
-        for entry in entry_list_onboard:
-            base_date = entry.onboard_date
-            if entry.symbol in entry_list_maxopentime:  # 기존에 캔들 데이터가 존재한다면 가장 최근 open time 부터 수집
-                base_date = entry_list_maxopentime[entry.symbol] + dt.timedelta(minutes=1)
-
-            start_date = base_date
-            end_date = base_date + dt.timedelta(minutes=1500)
-            while True:
-                if end_date >= now_date:
-                    end_date = now_date
-                    candle = self.req_client.get_candle(entry.symbol, '1m', start_date, end_date, 1500)
-                    self.coin_candle.bulk_create(candle)
-                    logger.info("%s / %s ~ %s", entry.symbol, start_date, end_date)
-                    break
-
-                candle = self.req_client.get_candle(entry.symbol, '1m', start_date, end_date, 1500)
-                self.coin_candle.bulk_create(candle)
-                logger.info("%s / %s ~ %s", entry.symbol, start_date, end_date)
-                # print("[%s] %s ~ %s", entry.symbol, start_date, end_date)
-
-                start_date = end_date + dt.timedelta(minutes=1)
-                end_date = start_date + dt.timedelta(minutes=1500)
-                time.sleep(0.5)
-
-    def collect_candle_l(self):
-        """ collect_candle_l:
-                거래소에 요청하여 기존 상장중(L)인 종목의 캔들을 저장한다.
-                1. DB에 저장되어 캔들 중 종목마다 가장 최근 open_time을 기준으로 캔들 저장
-
-            Args:
-                self :
-
-            Returns:
-                void :
-        """
-
-        # 수집 가능한 종목명
-        entry = self.coin_entry.select(self.coin_entry.symbol).where(self.coin_entry.exchange == self.exchange)
-        symbol_set = {e.symbol for e in entry}
-
-        now = dt.datetime.now()
-        temp_date = dt.datetime(now.year, now.month, now.day, now.hour, now.minute)
-
-        while True:
-            entry_list = list(self.coin_candle
+        for e in entry:
+            entry_info = (self.coin_candle
                               .select(self.coin_candle.symbol
-                                      , peewee.fn.Max(self.coin_candle.open_time).alias('max_open_time'))
+                                      , peewee.fn.Max(self.coin_candle.open_time).alias('max_open_time')
+                                      , peewee.fn.Min(self.coin_candle.open_time).alias('min_open_time')
+                                      , peewee.fn.Count(self.coin_candle.open_time).alias('cnt_open_time')).limit(1)
+                              .where(self.coin_candle.symbol == e.symbol)
                               .group_by(self.coin_candle.symbol, self.coin_candle.time_interval))
 
-            for e in entry_list:  # temp_date 기준으로 캔들 삽입
-                if e in symbol_set:  # 수집 가능한 종목 체크
-                    continue
-
-                start_date = e.max_open_time
-                end_date = start_date + dt.timedelta(minutes=1500)
-                req_date_list = []
-                while True:
-                    if end_date > temp_date:
-                        end_date = temp_date
-                        req_date_list.append([start_date, end_date])
-                        break
-
-                    req_date_list.append([start_date, end_date])
-                    start_date = start_date + dt.timedelta(minutes=1501)
-                    end_date = end_date + dt.timedelta(minutes=1501)
-
-                for d in req_date_list:
-                    candle = self.req_client.get_candle(e.symbol, '1m', d[0], d[1], 1500)
-                    self.coin_candle.bulk_create(candle)
-                    time.sleep(0.5)
+            # max_o = entry_info.max_open_time
+            # min_o = entry_info['min_open_time']
+            # cnt_o = entry_info.cnt_open_time
+            #
+            # print(max_o)
+            # print(min_o)
+            # print(cnt_o)
 
 
+    def collect_coin(self, one_req_limit=None, interval_cd=None, by_date=None):
+        """ collect_coin:
 
-            now = dt.datetime.now()
-            temp_date = dt.datetime(now.year, now.month, now.day, now.hour, now.minute)
+            Args:
+                self :
+
+            Returns:
+                void :
+                :param one_req_limit:
+                :param interval_cd:
+                :param by_date:
+        """
+
+        # 수집 종료 시간
+        # by_date is not null   : 파라미터 일시   (한번돌고 끝)
+        # by_date is null       : 현재일시 ~     (무한루프)
+        is_loop = False
+        if by_date is None:
+            by_date = dt.datetime.now()
+            is_loop = True
+
+        # 수집시작
+        while True:
+            # 캔들 수집 전에 종목 수집 (상장 폐지, 신규 상장 등 확인을 위함)
+            self.collect_entry()
+
+            # 수집 가능 종목만 조회
+            entry = list(self.coin_entry
+                         .select(self.coin_entry.symbol, self.coin_entry.onboard_date)
+                         .where(self.coin_entry.exchange == self.exchange))
+
+            # 수집 시작 시간
+            # - 거래소 기준 상장 일시  (첫 수집)
+            # - DB 기준 가장 최근 일시 (이전 수집 기록 있음)
+            max_open_time = list(self.coin_candle
+                                 .select(self.coin_candle.symbol, self.coin_candle.time_interval,
+                                         peewee.fn.Max(self.coin_candle.open_time))
+                                 .group_by(self.coin_candle.symbol, self.coin_candle.time_interval))
+
+            max_open_time = {x.symbol: x.open_time for x in max_open_time}
+
+            for e in entry:
+                if e.symbol in max_open_time.keys():
+                    e.onboard_date = max_open_time[e.symbol] + ComDate.get_interval_val(interval_cd)
+
+                self.collect_candle(e.symbol, e.onboard_date, by_date, interval_cd, one_req_limit)
+
+            if is_loop is False:
+                break
+
+            by_date = dt.datetime.now()
 
 
+    def collect_candle(self, symbol, start_date, end_date, interval_cd, one_req_limt):
+        """ collect_candle:
 
+            Args:
+                self :
 
-        # # 현재 상장중(L)인 종목에 대해서만 가격요청, 가장 최근에 저장된 Time 부터
-        # for entry in entry_list:
-        #     self.req_client.get_candle(['1000LUNCBUSD'], '1m', entry.onboard_date, entry.onboard_date)
+            Returns:
+                void :
+        """
+        interval_val = ComDate.get_interval_val(interval_cd)
 
-        # for entry in entry_list:
-        #     print(entry)
-        #     self.req_client.get_candle(entry)
+        temp_start_date = start_date
+        temp_end_date = start_date + (interval_val * one_req_limt) - interval_val
+        while True:
+            if temp_end_date > end_date:
+                candle = self.req_client.get_candle(symbol, interval_cd, temp_start_date, end_date, one_req_limt)
+                self.coin_candle.bulk_create(candle)
+                break
+            else:
+                candle = self.req_client.get_candle(symbol, interval_cd, temp_start_date, temp_end_date, one_req_limt)
+                self.coin_candle.bulk_create(candle)
+
+            temp_start_date = temp_start_date + (interval_val * one_req_limt)
+            temp_end_date = temp_end_date + (interval_val * one_req_limt)
+            time.sleep(0.5)
 
     def collect_entry(self):
         """ update_entry:
@@ -183,6 +155,7 @@ class CoinCollector:
         req_entry_s = self.req_client.get_entry()
         db_entry_s = self.coin_entry.select()
         db_entry_hist_s = (self.coin_entry_hist.select()
+                .where(self.coin_entry_hist.exchange == self.exchange)
                 .group_by(self.coin_entry_hist.exchange, self.coin_entry_hist.symbol))
 
         req_entry_dict = dict()
@@ -192,8 +165,6 @@ class CoinCollector:
         # 요청(거래소 API)된 종목 정보
         for req_entry in req_entry_s:
             req_entry_dict[req_entry.symbol] = req_entry
-
-        req_entry_dict.pop('1000LUNCBUSD')
 
         # DB에 조회된 종목 정보
         for db_entry in db_entry_s:
@@ -258,45 +229,6 @@ class CoinCollector:
         hist.list_cd = list_cd
         hist.price_use_yn = price_yn
         return hist
-
-
-
-        # # 기존 종목, 상장 신규 종목, 상장 폐지 종목 처리
-        # for symbol, entry in req_entry_dict.items():
-        #     if symbol in existing_entry_symbol and entry.__ne__(db_entry_dict[symbol]):
-        #         update_coin_entry.append(entry)
-        #
-        #     if symbol in new_entry_symbol:
-        #         insert_coin_entry.append(entry)
-        #
-        # for symbol in new_entry_symbol:
-        #     status = CoinEntryHist()
-        #     status.exchange = self.exchange
-        #     status.symbol = symbol
-        #     status.list_cd = 'N'
-        #     status.price_use_yn = False
-        #     insert_coin_entry_status.append(status)
-        #
-        # for symbol in del_entry_symbol:
-        #     status = CoinEntryHist()
-        #     status.exchange = self.exchange
-        #     status.symbol = symbol
-        #     status.list_cd = 'D'
-        #     status.price_use_yn = False
-        #     update_coin_entry_status.append(status)
-        #
-        # # 정보 저장
-        # if len(insert_coin_entry) > 0:
-        #     self.coin_entry.bulk_create(insert_coin_entry)
-        # if len(insert_coin_entry_status) > 0:
-        #     self.coin_entry_status.bulk_create(insert_coin_entry_status)
-        #
-        # if len(update_coin_entry) > 0:
-        #     for e in update_coin_entry:
-        #         e.save()
-        # if len(update_coin_entry_status) > 0:
-        #     for e in update_coin_entry_status:
-        #         e.save()
 
 
 # aa = CoinCollector('BINANCE')

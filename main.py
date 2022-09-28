@@ -16,8 +16,8 @@ def create_table():
 def main(argv):
     create_table()
     aa = CoinCollector.CoinCollector('BINANCE')
-    aa.collect_candle_l()
-
+    # aa.collect_coin(one_req_limit=1500, interval_cd='1m', by_date=None)
+    aa.check_missing_candle()
 
 if __name__ == '__main__':
     print("START")
