@@ -14,8 +14,8 @@ class BnFutureReqClient(ReqClient):
 
     def __init__(self):
         properties = configparser.ConfigParser()
-        properties.read('C:/atm_collection_master/config.ini')
-        database = properties["BINANCE"]
+        properties.read('C:/atsmaster/config.ini')
+        database = properties["BINANCE_TEST"]
         api_key = database["API_KEY"]
         secret_key = database["SEC_KEY"]
         self.um_futures_client = UMFutures(key=api_key, secret=secret_key)
