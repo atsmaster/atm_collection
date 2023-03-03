@@ -10,3 +10,5 @@ class ComDate:
         elif interval_cd == '1d':
             interval_val = dt.timedelta(days=1)
         return interval_val
+
+

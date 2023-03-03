@@ -1,5 +1,5 @@
+import datetime as dt
 from peewee import CompositeKey, IntegerField, CharField, DateTimeField
-
 from client.model.BaseModel import BaseModel
 
 
@@ -16,7 +16,10 @@ class CoinEntry(BaseModel):
     quote_asset = CharField()
     base_asset_precision = IntegerField()
     quote_asset_precision = IntegerField()
-    onboard_date = DateTimeField()
+    onboard_date = CharField(12)
+
+    def convert_onboard_date_to_datetime(self):
+        self.onboard_date = dt.datetime.strptime(self.onboard_date, '%Y%m%d%H%M')
 
     def __eq__(self, other):
         # if self.exchange != other.exchange:

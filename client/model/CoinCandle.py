@@ -1,4 +1,4 @@
-from peewee import CompositeKey, CharField, DoubleField, DateTimeField
+from peewee import CompositeKey, CharField, DoubleField, DateTimeField, FixedCharField
 
 from client.model.BaseModel import BaseModel
 
@@ -6,12 +6,11 @@ from client.model.BaseModel import BaseModel
 class CoinCandle(BaseModel):
 
     class Meta:
-        # db_table = 'coin_entry'
-        primary_key = CompositeKey('symbol', 'time_interval', 'open_time')
+        primary_key = CompositeKey('symbol', 'open_time')
 
-    symbol = CharField()
-    time_interval = CharField()
-    open_time = DateTimeField()
+    symbol = CharField(64)
+    # open_time = DateTimeField()
+    open_time = FixedCharField(8)
     open = DoubleField()
     close = DoubleField()
     high = DoubleField()

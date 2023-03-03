@@ -52,15 +52,8 @@ class CoinCollector:
                                       , peewee.fn.Min(self.coin_candle.open_time).alias('min_open_time')
                                       , peewee.fn.Count(self.coin_candle.open_time).alias('cnt_open_time')).limit(1)
                               .where(self.coin_candle.symbol == e.symbol)
-                              .group_by(self.coin_candle.symbol, self.coin_candle.time_interval))
+                              .group_by(self.coin_candle.symbol))
 
-            # max_o = entry_info.max_open_time
-            # min_o = entry_info['min_open_time']
-            # cnt_o = entry_info.cnt_open_time
-            #
-            # print(max_o)
-            # print(min_o)
-            # print(cnt_o)
 
 
     def collect_coin(self, one_req_limit=None, interval_cd=None, by_date=None):
@@ -91,18 +84,21 @@ class CoinCollector:
 
             # 수집 가능 종목만 조회
             entry = list(self.coin_entry
-                         .select(self.coin_entry.symbol, self.coin_entry.onboard_date)
+                         .select(self.coin_entry.symbol
+                                 , self.coin_entry.onboard_date)
                          .where(self.coin_entry.exchange == self.exchange))
+            for e in entry:
+                e.convert_onboard_date_to_datetime()
 
             # 수집 시작 시간
             # - 거래소 기준 상장 일시  (첫 수집)
-            # - DB 기준 가장 최근 일시 (이전 수집 기록 있음)
+            # - DB 기준 가장 최근 일시 (이전 수집 기록 있음) dt.datetime.strptime(e.onboard_date, '%Y%m%d%H%M')
             max_open_time = list(self.coin_candle
-                                 .select(self.coin_candle.symbol, self.coin_candle.time_interval,
+                                 .select(self.coin_candle.symbol,
                                          peewee.fn.Max(self.coin_candle.open_time))
-                                 .group_by(self.coin_candle.symbol, self.coin_candle.time_interval))
+                                 .group_by(self.coin_candle.symbol))
 
-            max_open_time = {x.symbol: x.open_time for x in max_open_time}
+            max_open_time = {x.symbol: dt.datetime.strptime(x.open_time, '%Y%m%d%H%M') for x in max_open_time}
 
             for e in entry:
                 if e.symbol in max_open_time.keys():

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from binance.um_futures import UMFutures
 from client.ReqClient import ReqClient
-from client.model.CoinCandleBinance import CoinCandleBinance
+from client.model.CoinCandleBinanceMin import CoinCandleBinanceMin
 from client.model.CoinEntry import CoinEntry
 
 
@@ -14,8 +14,8 @@ class BnFutureReqClient(ReqClient):
 
     def __init__(self):
         properties = configparser.ConfigParser()
-        properties.read('C:/atsmaster/config.ini')
-        database = properties["BINANCE_TEST"]
+        properties.read('C:/atm_collection_master/config.ini')
+        database = properties["BINANCE"]
         api_key = database["API_KEY"]
         secret_key = database["SEC_KEY"]
         self.um_futures_client = UMFutures(key=api_key, secret=secret_key)
@@ -31,7 +31,7 @@ class BnFutureReqClient(ReqClient):
             c.quote_asset = e['quoteAsset']
             c.base_asset_precision = e['baseAssetPrecision']
             c.quote_asset_precision = e['pricePrecision']
-            c.onboard_date = datetime.fromtimestamp(int(e['onboardDate']/1000))
+            c.onboard_date = datetime.fromtimestamp(int(e['onboardDate']/1000)).strftime('%Y%m%d%H%M')
             coin_entry_list.append(c)
         return coin_entry_list
 
@@ -47,10 +47,9 @@ class BnFutureReqClient(ReqClient):
         candle_list = list()
         for e in self.um_futures_client.klines(
                 symbol=symbol, interval=interval, startTime=start_time, endTime=end_time, limit=limit):
-            c = CoinCandleBinance()
+            c = CoinCandleBinanceMin()
             c.symbol = symbol
-            c.time_interval = interval
-            c.open_time = datetime.fromtimestamp(int(e[0] / 1000))
+            c.open_time = datetime.fromtimestamp(int(e[0] / 1000)).strftime('%Y%m%d%H%M')
             c.open = e[1]
             c.close = e[4]
             c.high = e[2]

@@ -4,9 +4,9 @@ from client.model.BaseModel import BaseModel
 from client.model.CoinCandle import CoinCandle
 
 
-class CoinCandleBinance(CoinCandle):
+class CoinCandleBinanceMin(CoinCandle):
 
     class Meta:
-        db_table = 'coin_candle_binance'
+        db_table = 'coin_candle_binance_min'
 
 
