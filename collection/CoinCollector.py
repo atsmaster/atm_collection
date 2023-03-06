@@ -104,6 +104,7 @@ class CoinCollector:
                 if e.symbol in max_open_time.keys():
                     e.onboard_date = max_open_time[e.symbol] + ComDate.get_interval_val(interval_cd)
 
+                logger.info('symbol : {} / {} ~ {}'.format(e.symbol, e.onboard_date, by_date))
                 self.collect_candle(e.symbol, e.onboard_date, by_date, interval_cd, one_req_limit)
 
             if is_loop is False:

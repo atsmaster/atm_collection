@@ -6,7 +6,10 @@ pip install pyinstaller
 pip install binance-futures-connector
 https://github.com/binance/binance-futures-connector-python
 
+바이낸스 웹소켓 사용을 위함
 pip install certifi
 환경변수(사용자 변수 편집)
-변수이름 : SSL_SERT_FILE
-변수값   : [python -m certifi]값
+ - 변수이름 : SSL_CERT_FILE
+ - 변수값   : cmd 명령어 실행 -> [python -m certifi]경로값
+후 파이참재기동
+

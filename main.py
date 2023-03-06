@@ -5,6 +5,7 @@ from client.model.CoinEntryHist import CoinEntryHist
 from client.model.CoinEntry import CoinEntry
 from collection import CoinCollector
 from db.Database import Database
+from sample.Backtest import Backtest
 import sys
 
 
@@ -18,6 +19,10 @@ def main(argv):
     aa = CoinCollector.CoinCollector('BINANCE')
     aa.collect_coin(one_req_limit=1500, interval_cd='1m', by_date=None)
     # aa.check_missing_candle()
+    # bb = Backtest()
+    # bb.testtest()
+
+
 
 if __name__ == '__main__':
     print("START")

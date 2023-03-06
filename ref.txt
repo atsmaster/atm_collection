@@ -13,4 +13,4 @@ C:\atm_collection_master\atm_collection\dist\main\main.exe
 # mysql 쿼리 로그 파일 확인
 show variables like 'general%';
 set global general_log=on;
-docker cp atm_collection_mysql:/var/lib/mysql/63f29ec9fa2b.log C:\atm_collection_master
+docker cp atm_collection_mysql:/var/lib/mysql/66346808acd1.log C:\atm_collection_master
