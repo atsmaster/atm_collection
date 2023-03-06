@@ -1,8 +1,6 @@
-import datetime
+from peewee import FixedCharField, BooleanField, CharField, IntegerField, PrimaryKeyField
 
-from peewee import CompositeKey, FixedCharField, BooleanField, CharField, IntegerField, DateTimeField, PrimaryKeyField
-
-from client.model.BaseModel import BaseModel
+from model.BaseModel import BaseModel
 
 
 class CoinEntryHist(BaseModel):

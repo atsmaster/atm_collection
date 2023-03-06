@@ -1,11 +1,10 @@
 import logging
 
-from client.model.CoinCandleBinanceMin import CoinCandleBinanceMin
-from client.model.CoinEntryHist import CoinEntryHist
-from client.model.CoinEntry import CoinEntry
+from model.CoinCandleBinanceMin import CoinCandleBinanceMin
+from model.CoinEntryHist import CoinEntryHist
+from model.CoinEntry import CoinEntry
 from collection import CoinCollector
-from db.Database import Database
-from sample.Backtest import Backtest
+from config.DatabaseConfig import Database
 import sys
 
 

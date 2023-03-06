@@ -1,5 +1,5 @@
 from client.enum.ExchangeEnum import ExchangeEnum
-from client.model.CoinCandleBinanceMin import CoinCandleBinanceMin
+from model.CoinCandleBinanceMin import CoinCandleBinanceMin
 
 
 class CoinCandleFactory:

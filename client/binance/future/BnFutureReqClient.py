@@ -1,10 +1,10 @@
 import configparser
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from binance.um_futures import UMFutures
 from client.ReqClient import ReqClient
-from client.model.CoinCandleBinanceMin import CoinCandleBinanceMin
-from client.model.CoinEntry import CoinEntry
+from model.CoinCandleBinanceMin import CoinCandleBinanceMin
+from model.CoinEntry import CoinEntry
 
 
 class BnFutureReqClient(ReqClient):

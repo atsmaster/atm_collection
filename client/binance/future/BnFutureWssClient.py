@@ -1,9 +1,6 @@
 import logging
-import time
 
 from binance.websocket.um_futures.websocket_client import UMFuturesWebsocketClient
-
-from client.model.CoinCandleBinanceMin import CoinCandleBinanceMin
 
 logger = logging.getLogger()
 

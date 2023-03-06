@@ -1,6 +1,6 @@
 import datetime as dt
-from peewee import CompositeKey, IntegerField, CharField, DateTimeField
-from client.model.BaseModel import BaseModel
+from peewee import CompositeKey, IntegerField, CharField
+from model.BaseModel import BaseModel
 
 
 class CoinEntry(BaseModel):

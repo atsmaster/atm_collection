@@ -1,6 +1,6 @@
-from peewee import CompositeKey, CharField, DoubleField, DateTimeField, FixedCharField
+from peewee import CompositeKey, CharField, DoubleField, FixedCharField
 
-from client.model.BaseModel import BaseModel
+from model.BaseModel import BaseModel
 
 
 class CoinCandle(BaseModel):

@@ -1,16 +1,15 @@
 import datetime as dt
 import logging
-import os
-import sys
 import time
-import peewee
 
 from client.ReqClientFactory import ReqClientFactory
-from client.binance.future.BnFutureWssClient import BnFutureWssClient
-from client.model.CoinCandleFactory import CoinCandleFactory
-from client.model.CoinEntry import CoinEntry
-from client.model.CoinEntryHist import CoinEntryHist
+from model.CoinCandleFactory import CoinCandleFactory
+from model.CoinEntryHist import CoinEntryHist
 from com.ComDate import ComDate
+
+from model.repo.CoinEntryRepo import CoinEntryRepo
+from model.repo.CoinEntryHistRepo import CoinEntryHistRepo
+from model.repo.CoinCandleBinanceMinRepo import CoinCandleBinanceMinRepo
 
 logger = logging.getLogger()
 
@@ -26,10 +25,11 @@ class CoinCollector:
     def __init__(self, exchange):
         self.exchange = exchange
         self.req_client = ReqClientFactory.create_req(exchange)
-        self.wss_client = BnFutureWssClient()
         self.coin_candle = CoinCandleFactory.create_entry(exchange)
-        self.coin_entry = CoinEntry
-        self.coin_entry_hist = CoinEntryHist
+        self.coin_entry_repo = CoinEntryRepo()
+        self.coin_entry_hist_repo = CoinEntryHistRepo()
+        self.coin_candle_binance_min_repo = CoinCandleBinanceMinRepo()
+
 
     def check_missing_candle(self):
         """ check_missing_candle:
@@ -41,19 +41,10 @@ class CoinCollector:
             Returns:
                 void :
         """
-        entry = list(self.coin_entry
-                     .select(self.coin_entry.symbol, self.coin_entry.onboard_date)
-                     .where(self.coin_entry.exchange == self.exchange))
+        entrys = self.coin_entry_repo.select_by_exchage(self.exchange)
 
-        for e in entry:
-            entry_info = (self.coin_candle
-                              .select(self.coin_candle.symbol
-                                      , peewee.fn.Max(self.coin_candle.open_time).alias('max_open_time')
-                                      , peewee.fn.Min(self.coin_candle.open_time).alias('min_open_time')
-                                      , peewee.fn.Count(self.coin_candle.open_time).alias('cnt_open_time')).limit(1)
-                              .where(self.coin_candle.symbol == e.symbol)
-                              .group_by(self.coin_candle.symbol))
-
+        for e in entrys:
+            self.coin_candle_binance_min_repo.select_group_by_symbol(e.symbol)
 
 
     def collect_coin(self, one_req_limit=None, interval_cd=None, by_date=None):
@@ -83,21 +74,15 @@ class CoinCollector:
             self.collect_entry()
 
             # 수집 가능 종목만 조회
-            entry = list(self.coin_entry
-                         .select(self.coin_entry.symbol
-                                 , self.coin_entry.onboard_date)
-                         .where(self.coin_entry.exchange == self.exchange))
+            entry = self.coin_entry_repo.select_by_exchage(self.exchange)
+
             for e in entry:
                 e.convert_onboard_date_to_datetime()
 
             # 수집 시작 시간
             # - 거래소 기준 상장 일시  (첫 수집)
             # - DB 기준 가장 최근 일시 (이전 수집 기록 있음) dt.datetime.strptime(e.onboard_date, '%Y%m%d%H%M')
-            max_open_time = list(self.coin_candle
-                                 .select(self.coin_candle.symbol,
-                                         peewee.fn.Max(self.coin_candle.open_time))
-                                 .group_by(self.coin_candle.symbol))
-
+            max_open_time = self.coin_candle_binance_min_repo.select_group_max_open_time()
             max_open_time = {x.symbol: dt.datetime.strptime(x.open_time, '%Y%m%d%H%M') for x in max_open_time}
 
             for e in entry:
@@ -150,10 +135,8 @@ class CoinCollector:
                 void :
         """
         req_entry_s = self.req_client.get_entry()
-        db_entry_s = self.coin_entry.select()
-        db_entry_hist_s = (self.coin_entry_hist.select()
-                .where(self.coin_entry_hist.exchange == self.exchange)
-                .group_by(self.coin_entry_hist.exchange, self.coin_entry_hist.symbol))
+        db_entry_s = self.coin_entry_repo.select_by_exchage(self.exchange)
+        db_entry_hist_s = self.coin_entry_hist_repo.select_coin_entry_hist_by_exchage(self.exchange)
 
         req_entry_dict = dict()
         db_entry_dict = dict()
@@ -202,10 +185,10 @@ class CoinCollector:
             delete_coin_entry.append(db_entry_dict[symbol])
 
         if len(insert_coin_entry) > 0:
-            self.coin_entry.bulk_create(insert_coin_entry)
+            self.coin_entry_repo.batch_insert(insert_coin_entry)
 
         if len(insert_coin_entry_hist) > 0:
-            self.coin_entry_hist.bulk_create(insert_coin_entry_hist)
+            self.coin_entry_hist_repo.batch_insert(insert_coin_entry_hist)
 
         for e in update_coin_entry:
             e.save()

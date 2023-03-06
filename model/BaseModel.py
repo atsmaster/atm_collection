@@ -3,7 +3,7 @@ import datetime
 
 from peewee import Model, DateTimeField
 
-from db.Database import Database
+from config.DatabaseConfig import Database
 
 
 class BaseModel(Model):
