@@ -6,17 +6,17 @@ from model.BaseModel import BaseModel
 class CoinEntry(BaseModel):
 
     class Meta:
-        db_table = 'coin_entry'
+        db_table = 'TB_COIN_ENTRY'
         primary_key = CompositeKey('exchange', 'symbol')
 
-    exchange = CharField()
-    symbol = CharField()
-    status = CharField()
-    base_asset = CharField()
-    quote_asset = CharField()
-    base_asset_precision = IntegerField()
-    quote_asset_precision = IntegerField()
-    onboard_date = CharField(12)
+    exchange = CharField(column_name='EXCHANGE')
+    symbol = CharField(column_name='SYMBOL')
+    status = CharField(column_name='STATUS')
+    base_asset = CharField(column_name='BASE_ASSET')
+    quote_asset = CharField(column_name='QUOTE_ASSET')
+    base_asset_precision = IntegerField(column_name='BASE_ASSET_PRECISION')
+    quote_asset_precision = IntegerField(column_name='QUOTE_ASSET_PRECISION')
+    onboard_date = CharField(12, column_name='ONBOARD_DATE')
 
     def convert_onboard_date_to_datetime(self):
         self.onboard_date = dt.datetime.strptime(self.onboard_date, '%Y%m%d%H%M')

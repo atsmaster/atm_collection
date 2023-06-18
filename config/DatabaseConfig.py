@@ -17,7 +17,7 @@ class Database(metaclass=Singleton):
     def conn(self):
         if self.connection is None:
             properties = configparser.ConfigParser()
-            properties.read('C:/atm_collection_master/config.ini')
+            properties.read('D:/atm_master/config.ini')
             database = properties["DATABASE"]
             db = database["DB"]
             host = database["HOST"]

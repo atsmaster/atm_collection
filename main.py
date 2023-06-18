@@ -15,18 +15,22 @@ def create_table():
 
 def main(argv):
     create_table()
-    aa = CoinCollector.CoinCollector('BINANCE')
-    aa.collect_coin(one_req_limit=1500, interval_cd='1m', by_date=None)
+    # aa = CoinCollector.CoinCollector('BINANCE')
+    # aa.collect_coin(one_req_limit=1500, interval_cd='1m', by_date=None)
     # aa.check_missing_candle()
     # bb = Backtest()
     # bb.testtest()
+
+    collector = CoinCollector.CoinCollector('BINANCE')
+    collector.collect_entry()
+
 
 
 
 if __name__ == '__main__':
     print("START")
     logger = logging.getLogger()
-    logging.basicConfig(filename='C:/atm_collection_master/atm_collection/log.txt'
+    logging.basicConfig(filename='D:/atm_master/atm_collection/log.txt'
                         , format='%(levelname)s:[%(asctime)s] %(message)s'
                         , level=logging.INFO)
     main(sys.argv)
