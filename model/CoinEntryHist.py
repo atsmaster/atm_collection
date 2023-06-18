@@ -14,7 +14,7 @@ class CoinEntryHist(BaseModel):
     seq = PrimaryKeyField(column_name='SEQ')
     exchange = CharField(column_name='EXCHANGE')
     symbol = CharField(column_name='SYMBOL')
-    status = CharField(column_name='STATUS')
+    symbol_status_cd = CharField(column_name='SYMBOL_STATUS_CD')
     base_asset = CharField(column_name='BASE_ASSET')
     quote_asset = CharField(column_name='QUOTE_ASSET')
     base_asset_precision = IntegerField(column_name='BASE_ASSET_PRECISION')

@@ -26,7 +26,7 @@ class BnFutureReqClient(ReqClient):
             c = CoinEntry()
             c.exchange = self.EXCHANGE_NAME
             c.symbol = e['symbol']
-            c.status = e['status']
+            c.symbol_status_cd = e['status']
             c.base_asset = e['baseAsset']
             c.quote_asset = e['quoteAsset']
             c.base_asset_precision = e['baseAssetPrecision']

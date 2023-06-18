@@ -11,7 +11,7 @@ class CoinEntry(BaseModel):
 
     exchange = CharField(column_name='EXCHANGE')
     symbol = CharField(column_name='SYMBOL')
-    status = CharField(column_name='STATUS')
+    symbol_status_cd = CharField(column_name='SYMBOL_STATUS_CD')
     base_asset = CharField(column_name='BASE_ASSET')
     quote_asset = CharField(column_name='QUOTE_ASSET')
     base_asset_precision = IntegerField(column_name='BASE_ASSET_PRECISION')
@@ -26,7 +26,7 @@ class CoinEntry(BaseModel):
         #     return False
         if self.symbol != other.symbol:
             return False
-        if self.status != other.status:
+        if self.symbol_status_cd != other.symbol_status_cd:
             return False
         if self.base_asset != other.base_asset:
             return False

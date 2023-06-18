@@ -200,7 +200,7 @@ class CoinCollector:
         hist = CoinEntryHist()
         hist.exchange = self.exchange
         hist.symbol = entry.symbol
-        hist.status = entry.status
+        hist.symbol_status_cd = entry.symbol_status_cd
         hist.base_asset = entry.base_asset
         hist.quote_asset = entry.quote_asset
         hist.base_asset_precision = entry.base_asset_precision
