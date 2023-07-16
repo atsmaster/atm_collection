@@ -205,7 +205,7 @@ class CoinCollector:
         hist.quote_asset = entry.quote_asset
         hist.base_asset_precision = entry.base_asset_precision
         hist.quote_asset_precision = entry.quote_asset_precision
-        hist.onboard_date = entry.onboard_date
+        hist.onboard_dttm = entry.onboard_dttm
         hist.list_cd = list_cd
         hist.price_use_yn = price_yn
         return hist

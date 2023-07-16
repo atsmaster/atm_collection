@@ -31,7 +31,7 @@ class BnFutureReqClient(ReqClient):
             c.quote_asset = e['quoteAsset']
             c.base_asset_precision = e['baseAssetPrecision']
             c.quote_asset_precision = e['pricePrecision']
-            c.onboard_date = datetime.fromtimestamp(int(e['onboardDate']/1000)).strftime('%Y%m%d%H%M')
+            c.onboard_dttm = datetime.fromtimestamp(e['onboardDate']/1000)
             coin_entry_list.append(c)
         return coin_entry_list
 
@@ -49,7 +49,7 @@ class BnFutureReqClient(ReqClient):
                 symbol=symbol, interval=interval, startTime=start_time, endTime=end_time, limit=limit):
             c = CoinCandleBinanceMin()
             c.symbol = symbol
-            c.open_time = datetime.fromtimestamp(int(e[0] / 1000)).strftime('%Y%m%d%H%M')
+            c.open_dttm = datetime.fromtimestamp(int(e[0] / 1000))
             c.open = e[1]
             c.close = e[4]
             c.high = e[2]
