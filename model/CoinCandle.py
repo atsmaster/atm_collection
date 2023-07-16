@@ -1,5 +1,5 @@
 from peewee import CompositeKey, CharField, DoubleField, FixedCharField, DateTimeField
-
+import datetime
 from model.BaseModel import BaseModel
 
 
@@ -15,4 +15,6 @@ class CoinCandle(BaseModel):
     close = DoubleField(column_name='CLOSE')
     high = DoubleField(column_name='HIGH')
     low = DoubleField(column_name='LOW')
+    createdDttm = DateTimeField(column_name='CREATED_DTTM', default=datetime.datetime.now())
+    modifiedDttm = DateTimeField(column_name='MODIFIED_DTTM', default=None)
 

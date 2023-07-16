@@ -1,3 +1,4 @@
+import datetime
 import datetime as dt
 from peewee import CompositeKey, IntegerField, CharField, DateTimeField
 from model.BaseModel import BaseModel
@@ -16,7 +17,9 @@ class CoinEntry(BaseModel):
     quote_asset = CharField(column_name='QUOTE_ASSET')
     base_asset_precision = IntegerField(column_name='BASE_ASSET_PRECISION')
     quote_asset_precision = IntegerField(column_name='QUOTE_ASSET_PRECISION')
-    onboard_dttm = DateTimeField(12, column_name='ONBOARD_DTTM')
+    onboard_dttm = DateTimeField(column_name='ONBOARD_DTTM')
+    createdDttm = DateTimeField(column_name='CREATED_DTTM', default=datetime.datetime.now())
+    modifiedDttm = DateTimeField(column_name='MODIFIED_DTTM', default=None)
 
 
     def __eq__(self, other):

@@ -1,5 +1,5 @@
 from peewee import FixedCharField, BooleanField, CharField, IntegerField, PrimaryKeyField, DateTimeField
-
+import datetime
 from model.BaseModel import BaseModel
 
 
@@ -22,4 +22,6 @@ class CoinEntryHist(BaseModel):
     onboard_dttm = DateTimeField(12, column_name='ONBOARD_DTTM')
     list_cd = FixedCharField(max_length=1, column_name='LIST_CD')  # N : 신규 상장, D : 상장 폐지, R : 재상장, L : 기존 종목 정보 변경
     price_use_yn = BooleanField(column_name='PRICE_USE_YN')
-    # create_date = DateTimeField(default=datetime.datetime.now())
+
+    createdDttm = DateTimeField(column_name='CREATED_DTTM', default=datetime.datetime.now())
+    modifiedDttm = DateTimeField(column_name='MODIFIED_DTTM', default=None)
